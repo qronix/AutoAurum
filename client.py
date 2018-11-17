@@ -4,8 +4,8 @@ import PIL
 import psutil
 import pynput
 import findImg
+import config
 from pynput.mouse import Listener
-
 
 def init():
         foundClient = False
@@ -27,7 +27,7 @@ def init():
 
 def setup():
     print('Please close all windows besides this and Runescape')
-    findImg.findImg('magicShortBow')
+    # findImg.findImg('magicShortBow')
     # findBow()
     # login()
     # print('Logging')
@@ -50,8 +50,8 @@ def login():
     print(loginButton)
     loginButtonX, loginButtonY = pyautogui.center(loginButton)
     pyautogui.click(loginButtonX,loginButtonY)
-    username = "Purpletray"
-    password = "Y23awace"
+    username = config.config['username']
+    password = config.config['password']
     pyautogui.typewrite(username)
     pyautogui.PAUSE = 1
     pyautogui.press('tab')
