@@ -1,0 +1,5 @@
+{
+    "python.jediEnabled": false,
+    "git.ignoreLimitWarning": true,
+    "python.linting.pylintEnabled": true
+}
