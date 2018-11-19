@@ -5,7 +5,11 @@ import psutil
 import pynput
 import findImg
 import config
+import time
+import utils
+import findBanker
 from pynput.mouse import Listener
+import HumanMouse as hm
 
 def init():
         foundClient = False
@@ -27,57 +31,39 @@ def init():
 
 def setup():
     print('Please close all windows besides this and Runescape')
-    # findImg.findImg('magicShortBow')
-    # findBow()
-    # login()
-    # print('Logging')
-    # login()
-    # with Listener(on_click=on_click) as listener:
-    #     listener.join()
-def findBow():
-    bow = pyautogui.locateOnScreen('magicShortBow.png')
-    while bow == None:
-        bow = pyautogui.locateOnScreen('magicShortBow.png')
-        print('finding bow')
-        print(bow)
-    bowX, bowY = pyautogui.center(bow)
-    pyautogui.click(bowX,bowY)
-    print(bow)
+    print('Logging in......')
+    # moveTest()
+    # utils.findClientBounds()
+    findBanker.findBanker()
+    # try:
+    #     login()
+    # except Exception as ex:
+    #     print(ex)
+
+def moveTest():
+    hm.realMoveToLocation(2540,1377)
+
 def login():
-    loginButton = pyautogui.locateOnScreen('loginButton.png')
-    while loginButton == None:
-        loginButton = pyautogui.locateOnScreen('loginButton.png')        
-    print(loginButton)
-    loginButtonX, loginButtonY = pyautogui.center(loginButton)
-    pyautogui.click(loginButtonX,loginButtonY)
-    username = config.config['username']
-    password = config.config['password']
-    pyautogui.typewrite(username)
-    pyautogui.PAUSE = 1
-    pyautogui.press('tab')
-    pyautogui.typewrite(password)
-    pyautogui.click(loginButtonX, loginButtonY)
-    pyautogui.PAUSE = 2
-    enterWorld()
+    try:
+        findImg.locateImgOnScreenAndClick('loginLogo1',True)
+        username = config.config['username']
+        password = config.config['password']
+        pyautogui.typewrite(username,0.2)
+        time.sleep(2)
+        pyautogui.press('tab')
+        pyautogui.typewrite(password,0.1)
+        findImg.locateImgOnScreenAndClick('loginButton',True)
+        enterWorld()
+    except Exception as ex:
+        print(ex)
+
 def enterWorld():
-    print("Entering world")
-    playButton = pyautogui.locateOnScreen('playButton.png')
-    while playButton == None:
-        playButton = pyautogui.locateOnScreen('playButton.png')
-    playButtonX, playButtonY = pyautogui.center(playButton)
-    pyautogui.click(playButtonX,playButtonY)
-    pyautogui.PAUSE = 4
-    reportButton = pyautogui.locateOnScreen('reportButton.png')
-    while reportButton == None:
-        print("Waiting to enter world....")
-        pyautogui.PAUSE = 1
-        reportButton = pyautogui.locateOnScreen('reportButton.png')
+    print("Entering world....")
+    findImg.locateImgOnScreenAndClick('playButton',True)
+    time.sleep(4)
+    findImg.locateImgOnScreenAndClick('homeButtonMap',False)
     print("Entered world")
-    
-def on_click(x,y,button,pressed):
-    if not pressed:
-        print('Mouse is at {0},{1}').format(x,y)
-        image = pyautogui.screenshot('test.png')
+    utils.findClientBounds()
 
 if __name__ == '__main__':
     
