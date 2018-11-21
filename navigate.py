@@ -4,12 +4,14 @@ import time
 import clientBounds as cb
 import utils
 import pyautogui
+import pynput
 from pynput import mouse
 from pynput import keyboard
-from pynput.keyboard import Key
+from pynput.keyboard import Key, Controller
 import _pickle as cPickle
-import threading
+from threading import _start_new_thread
 import HumanMouse as hm
+from multiprocessing.pool import ThreadPool
 
 
 
@@ -30,7 +32,7 @@ def posCamToCompass(compassName):
         print('finding image')
 
 def on_click(x,y,button,pressed):
-    global previousTime
+    global previousTimeMouse
     # cb.clientBounds["bottomRight"][0]-cb.clientBounds["topLeft"][0],cb.clientBounds["bottomRight"][1]-cb.clientBounds["topLeft"][1]
     if not pressed:
         print('Recording is {0}'.format(recording))
@@ -44,83 +46,164 @@ def on_click(x,y,button,pressed):
         # pyautogui.moveTo(cb.clientBounds["centerX"],cb.clientBounds["centerY"])
         # print('Target')
         if(recording):
-            prevTime = getPrevTime()
+            prevTime = getPrevTimeMouse()
             travelDelay = time.time() - prevTime
-            previousTime = time.time()
+            previousTimeMouse = time.time()
             print('timedelay is {0}'.format(travelDelay))
             step = {
                 "x":cb.clientBounds["centerX"]-x,
                 "y":cb.clientBounds["centerY"]-y,
                 "waitTime": travelDelay
             }
-            path.append(step)
-            print('Path: {0}'.format(path))
+            mousePath.append(step)
+            print('Path: {0}'.format(mousePath))
             # travelTime = time.time()
     else:
         pass
-def getPrevTime():
-    return previousTime
+def getPrevTimeMouse():
+    return previousTimeMouse
+def getPrevTimeKeyboard():
+    return previousTimeKeyboard
+
 def on_press(key):
     global recording
+    global previousTimeKeyboard
+    global keyPressDurationStart
+    global cameraStep
+    global keyReleased
+
     if key == Key.backspace:
         recording = True
         print('Recording')
         print(recording)
-    if key == Key.end:
+    elif key == Key.end:
         recording = False
         print('Stopped recording')
-        writePathToFile()
+        writeCameraPathToFile()
+        writeMousePathToFile()
+    elif key != Key.backspace and key != Key.end and recording == True:
+        prevTime = getPrevTimeKeyboard()
+        moveDelay = time.time() - prevTime
+        previousTimeKeyboard = time.time()
+        if getKeyReleaseState():
+            keyPressDurationStart = time.time()
+            keyReleased = False
+        cameraStep={
+            "key":key,
+            "waitTime":moveDelay
+        }
+        
+
+def getKeyReleaseState():
+    return keyReleased
+def on_release(key):
+    global cameraStep
+    global keyReleased
+    if recording and key != Key.end and key != Key.backspace:
+        keyDuration = time.time() - keyPressDurationStart
+        cameraStep["duration"] = keyDuration
+        cameraPath.append(cameraStep)
+        keyReleased = True
+        cameraStep = {}
 
 def setupNavigation():
-    utils.findClientBounds()
+    # utils.findClientBounds()
     pyautogui.moveTo(cb.clientBounds["centerX"],cb.clientBounds["centerY"])
     target = {
         "clientBounds":cb.clientBounds,
         "compassStartDeg":0,
-        "start":'geEntrance',
-        "target":'geBanker'
+        "start":'test',
+        "target":'test'
     }
-    path.append(target)
+    mousePath.append(target)
 
     with mouse.Listener(on_click=on_click) as listener:
-        with keyboard.Listener(on_press=on_press) as listener:
+        with keyboard.Listener(on_press=on_press,on_release=on_release) as listener:
             listener.join()
 
-def writePathToFile():
-    global path
-    fileName = '{0}_to_{1}.p'.format(path[0]["start"],path[0]["target"])
-    cPickle.dump(path,open(fileName,"wb"))
+def writeMousePathToFile():
+    global mousePath
+    fileName = '{0}_to_{1}_mouse.p'.format(mousePath[0]["start"],mousePath[0]["target"])
+    cPickle.dump(mousePath,open(fileName,"wb"))
     print('Path written to file')
-    path = []
+    mousePath = []
 
-def readPathFile():
-    global path
-    path = cPickle.load(open("geEntrance_to_geBanker.p","rb"))
+def readMousePathFile():
+    # global mousePath
+    path = cPickle.load(open("test_to_test_mouse.p","rb"))
     print('Loaded path as {0}'.format(path))
     print('Path starts at: {0}'.format(path[0]["start"]))
-    navigatePath()
+    navigatePath(path)
+
+def writeCameraPathToFile():
+    global cameraPath
+    fileName = '{0}_to_{1}_camera.p'.format(mousePath[0]["start"],mousePath[0]["target"])
+    cPickle.dump(cameraPath,open(fileName,"wb"))
+    print('Path written to file')
+    cameraPath = []
+
+def readCameraPathFile():
+    global cameraPath
+    cameraPath = cPickle.load(open("test_to_test_camera.p","rb"))
+    print('Loaded path as {0}'.format(cameraPath))
+    moveCamera()
+
+def navigatePathFile():
+    # _start_new_thread(readCameraPathFile)
+    readMousePathFile()
+    _start_new_thread(navigatePath)
+    # readCameraPathFile()
 
 def navigatePath():
+    # global mousePath
+    path = cPickle.load(open("test_to_test_mouse.p","rb"))
+    print('Loaded path as {0}'.format(path))
+    print('Path starts at: {0}'.format(path[0]["start"]))
+    # navigatePath()
+
     if path != []:
         print('Navigating path....')
         pathInfo = path[0]
-        print(pathInfo)
+        print(path)
         del path[0]
+        print('Path is now: {0}'.format(path))
         for step in path:
             cenX = cb.clientBounds["centerX"]
             cenY = cb.clientBounds["centerY"]
-            targetX = cenX-path[1]["x"]
-            targetY = cenY-path[1]["y"]
+            targetX = cenX-step["x"]
+            targetY = cenY-step["y"]
             hm.realMoveToLocation(targetX,targetY)
+            # pyautogui.moveTo(targetX,targetY)
             hm.clickAtCurrentLocation()
             time.sleep(step["waitTime"])
-            
 
-path = []
-previousTime = time.time()
+def moveCamera():
+    if cameraPath != []:
+        print('Moving camera along path....')
+        for step in cameraPath:
+            if "key" not in step:
+                continue
+            key = step["key"].char
+            holdTime = step["duration"]
+            start = time.time()
+            while time.time() - start < holdTime:
+                pyautogui.keyDown(key)
+            pyautogui.keyUp(key)
+            time.sleep(float(step["waitTime"]))
+
+cameraStep = {}
+mousePath = []
+cameraPath = []
+keyReleased = True
+previousTimeMouse = time.time()
+previousTimeKeyboard = time.time()
+keyPressDurationStart = time.time()
 firstStep = True
 travelDelay = 0
 utils.findClientBounds()
 recording = False
 # setupNavigation()
-readPathFile()
+# readCameraPathFile()
+# navigatePathFile()
+
+readMousePathFile()
