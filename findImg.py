@@ -5,6 +5,7 @@ import HumanMouse as hMouse
 from pathlib import Path
 # import utils
 import clientBounds as cb
+import cv2
 
 # cb = utils.findClientBounds()
 imgDirectory = '/imgs/'
@@ -22,7 +23,10 @@ def getPath(name):
 def locateImgOnScreenAndClick(name,click):
     imgPath = getPath(name)
 
-    target = pyautogui.locateOnScreen(imgPath,region=(cb.clientBounds["topLeft"][0],cb.clientBounds["topLeft"][1],cb.clientBounds["bottomRight"][0]-cb.clientBounds["bottomLeft"][0],cb.clientBounds["bottomRight"][1]-cb.clientBounds["topLeft"][1]))
+    if cb.clientBounds == {}:
+        target = pyautogui.locateOnScreen(imgPath,confidence=0.9)
+    else:
+        target = pyautogui.locateOnScreen(imgPath,region=(cb.clientBounds["topLeft"][0],cb.clientBounds["topLeft"][1],cb.clientBounds["bottomRight"][0]-cb.clientBounds["topLeft"][0],cb.clientBounds["bottomRight"][1]-cb.clientBounds["topLeft"][1]),confidence=0.9)
     print('Searching for img')
     # attempts = 0
     # while target == None:
@@ -39,19 +43,14 @@ def locateImgOnScreenAndClick(name,click):
     if target != None and click == False:
         return True
 
-def getImgCoords(name):
+def getImgCoords(name,customRegion):
     imgPath = getPath(name)
-
-    target = pyautogui.locateOnScreen(imgPath)
-    attempts = 0
-    while target == None:
-        print('Attempting to locate image on screen...')
-        target = pyautogui.locateOnScreen(imgPath)
-        # pyautogui.PAUSE = 1
-        attempts+=1
-        if(attempts>=10):
-            print('Could not locate image on screen.')
-            break
+    if cb.clientBounds == {} and customRegion == None:
+        target = pyautogui.locateOnScreen(imgPath,confidence=0.8)
+    elif cb.clientBounds != {} and customRegion == None:
+        target = pyautogui.locateOnScreen(imgPath,region=(cb.clientBounds["topLeft"][0],cb.clientBounds["topLeft"][1],cb.clientBounds["bottomRight"][0]-cb.clientBounds["topLeft"][0],cb.clientBounds["bottomRight"][1]-cb.clientBounds["topLeft"][1]),confidence=0.8)
+    elif cb.clientBounds != {} and customRegion != None:
+        target = pyautogui.locateOnScreen(imgPath,region=(customRegion["topLeftX"],customRegion["topLeftY"],customRegion["width"],customRegion["height"]),confidence=0.8)
     if target != None:
         targetX, targetY = pyautogui.center(target)
         return [targetX,targetY]
